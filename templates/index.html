@@ -53,40 +53,14 @@ button[type=submit]:hover{transform:translateY(-3px);box-shadow:0 8px 25px #00d4
 .kpi-card{background:var(--kpi-bg);padding:10px;margin:10px 0;border:1px solid var(--kpi-border);border-radius:8px;text-align:center;transition:box-shadow .3s}
 .kpi-card:hover{box-shadow:0 0 10px var(--kpi-border)}
 .kpi-card strong{color:var(--grad2)}
-
-/* LOADER OVERLAY – NOW WORKING */
-#loader-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(10, 10, 20, 0.95);
-    color: #00d4ff;
-    font-size: 1.6em;
-    font-weight: 600;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    flex-direction: column;
-    backdrop-filter: blur(8px);
-    animation: pulse 2s infinite;
-}
-#loader-overlay::after {
-    content: '';
-    width: 60px; height: 60px;
-    border: 6px solid #00d4ff33;
-    border-top: 6px solid #00d4ff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-top: 20px;
-}
-@keyframes pulse {0%,100%{opacity:0.8}50%{opacity:1}}
-@keyframes spin {0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+#loader-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,20,0.95);color:#00d4ff;font-size:1.6em;font-weight:600;justify-content:center;align-items:center;z-index:9999;flex-direction:column;backdrop-filter:blur(8px);animation:pulse 2s infinite}
+#loader-overlay::after{content:'';width:60px;height:60px;border:6px solid #00d4ff33;border-top:6px solid #00d4ff;border-radius:50%;animation:spin 1s linear infinite;margin-top:20px}
+@keyframes pulse{0%,100%{opacity:0.8}50%{opacity:1}}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- LOADER OVERLAY (NOW IN HTML) -->
 <div id="loader-overlay">
     <div>MMCOS is orchestrating...</div>
     <div style="font-size:0.9em;margin-top:10px;">Async agents active | Grok 4 + Gemini + Llama 3.1</div>
@@ -110,13 +84,27 @@ button[type=submit]:hover{transform:translateY(-3px);box-shadow:0 8px 25px #00d4
 <div style="margin-top:40px">
 {{ report | safe }}
 </div>
+
+<!-- Updated Google Ads Section -->
 <h2>Google Ads</h2>
-<div class="asset-container" style="border-left:4px solid #ff5722">
-    <div style="text-align: center; margin-bottom: 10px;">
-        <button class="copy-btn" onclick="copy('{{ google_ads }}', this)">Copy</button>
+{% if google_ads %}
+    <div class="asset-container" style="border-left:4px solid #4285F4">
+        <div style="text-align: center; margin-bottom: 10px;">
+             <button class="copy-btn" data-copy-text="{{ google_ads.ad1 }}" onclick="copyFromData(this)">Copy Ad 1</button>
+        </div>
+        <span class="asset-label">GOOGLE AD 1</span>
+        <div style="white-space:pre-wrap">{{ google_ads.ad1 }}</div>
     </div>
-    <div style="white-space:pre-wrap">{{ google_ads }}</div>
-</div>
+    <div class="asset-container" style="border-left:4px solid #34A853">
+         <div style="text-align: center; margin-bottom: 10px;">
+             <button class="copy-btn" data-copy-text="{{ google_ads.ad2 }}" onclick="copyFromData(this)">Copy Ad 2</button>
+        </div>
+        <span class="asset-label">GOOGLE AD 2</span>
+        <div style="white-space:pre-wrap">{{ google_ads.ad2 }}</div>
+    </div>
+{% endif %}
+<!-- End of Updated Section -->
+
 <h2>Viral X Posts</h2>
 {% if viral_posts.post1 %}
 <div class="asset-container" style="border-left:4px solid #1DA1F2">
