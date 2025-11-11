@@ -1,0 +1,5 @@
+flask
+google-generativeai>=0.8.2
+python-dotenv
+markdown
+gunicorn
