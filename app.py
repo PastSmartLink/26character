@@ -191,53 +191,47 @@ class OrchestratorAgent:
             },
         }
 
+# =============================================================================
+# REPLACED & FIXED: RefinerAgent (Full Corrected Version)
+# =============================================================================
 class RefinerAgent:
-    # --- THIS IS THE MODIFIED FUNCTION ---
     def generate_google_ads_copy(self, dossier: dict, goal: str) -> dict:
         uplift = dossier.get("mock_results", {}).get("engagement_uplift", "30%")
-        prompt = PROMPTS["UNIVERSAL_GOOGLE_ADS"].format(TOPIC=goal, UPLIFT=uplift)
+        prompt = (PROMPTS["UNIVERSAL_GOOGLE_ADS"] or "").format(TOPIC=goal, UPLIFT=uplift)
         try:
             _, model = select_model("lite")
             resp = model.generate_content(prompt)
             ads_text = resp.text.strip()
             
-            # Split the response text by a clear separator like '---'
-            parts = re.split(r'\s*---\s*', ads_text)
+            # Split only on first --- separator
+            parts = re.split(r'\s*---\s*', ads_text, 1)
             
-            # Clean up and assign to ad1 and ad2
-            ad1_content = parts.replace("AD 1:", "").strip() if len(parts) > 0 else "Ad 1 could not be generated."
-            ad2_content = parts.replace("AD 2:", "").strip() if len(parts) > 1 else "Ad 2 could not be generated."
+            ad1_content = parts[0].replace("AD 1:", "").strip() if len(parts) > 0 else "Ad 1 could not be generated."
+            ad2_content = parts[1].replace("AD 2:", "").strip() if len(parts) > 1 else "Ad 2 could not be generated."
 
-            return {
-                "ad1": ad1_content,
-                "ad2": ad2_content
-            }
+            return {"ad1": ad1_content, "ad2": ad2_content}
         except Exception as e:
             print(f"Ads error: {e}")
-            return {
-                "ad1": "Fallback Ad 1: Could not generate.",
-                "ad2": "Fallback Ad 2: An error occurred."
-            }
-    # --- END OF MODIFIED FUNCTION ---
+            return {"ad1": "Fallback Ad 1: Error generating ad.", "ad2": "Fallback Ad 2: Error generating ad."}
 
     def generate_viral_x_post(self, goal: str) -> dict:
-        prompt = PROMPTS["VIRAL_X_POST"].format(TOPIC=goal)
+        prompt = (PROMPTS["VIRAL_X_POST"] or "").format(TOPIC=goal)
         try:
             _, model = select_model("lite")
             resp = model.generate_content(prompt)
             lines = resp.text.strip().split("\n")
             viral = {}
             for line in lines:
-                if line.startswith("MEDIA:"):
-                    viral["media"] = line.replace("MEDIA:", "").strip()
-                elif line.startswith("HOOK POST:"):
-                    viral["post1"] = line.replace("HOOK POST:", "").strip()
-                elif line.startswith("ANALYSIS REPLY:"):
-                    viral["post2"] = line.replace("ANALYSIS REPLY:", "").strip()
-                elif line.startswith("GROK BOOST:"):
-                    viral["grok_boost"] = line.replace("GROK BOOST:", "").strip()
-                elif line.startswith("HASHTAGS:"):
-                    viral["hashtags"] = line.replace("HASHTAGS:", "").strip()
+                if ":" not in line:
+                    continue
+                key, value = line.split(":", 1)
+                key = key.strip()
+                value = value.strip()
+                if key == "MEDIA": viral["media"] = value
+                elif key == "HOOK POST": viral["post1"] = value
+                elif key == "ANALYSIS REPLY": viral["post2"] = value
+                elif key == "GROK BOOST": viral["grok_boost"] = value
+                elif key == "HASHTAGS": viral["hashtags"] = value
             return viral
         except Exception as e:
             print(f"X Post error: {e}")
@@ -249,7 +243,6 @@ class RefinerAgent:
             posts_f = ex.submit(self.generate_viral_x_post, goal)
             ads, posts = ads_f.result(), posts_f.result()
 
-        # ----- Styling -----
         style = {
             "saidler_co": """
                 classDef userInput fill:#0a1a2e,stroke:#00bfff,color:#fff;
@@ -271,12 +264,10 @@ class RefinerAgent:
             """,
         }.get(domain, "")
 
-        # ----- Reasoning -----
-        reasoning = strategy.get("reasoning", "").replace('"', "'").replace("\n", " ").strip()
-        reasoning = smart_truncate(reasoning, 120) + ("..." if len(reasoning) > 120 else "")
+        reasoning = smart_truncate(strategy.get("reasoning", "").replace('"', "'").replace("\n", " ").strip(), 120)
         planner_tool = strategy.get("planner_tool", "GENERAL").replace("_", " ").replace("SAIDLER ", "")
 
-        # ----- KPIs (Expanded for Tangibility) -----
+        # Corrected KPI Logic
         kpis = plan.get("mission_workflow", {}).get("kpis", [])
         if domain == "saidler_co" and not kpis:
             kpis = [
@@ -289,89 +280,59 @@ class RefinerAgent:
         if kpis:
             kpi_md = "### KPIs\n"
             for k in kpis:
-                kpi_md += f'<div class="kpi-card"><strong>{k.split(":")}:</strong> {k.split(":").strip()}</div>\n'
+                parts = k.split(":", 1)
+                if len(parts) == 2:
+                    key_part, value_part = parts[0].strip(), parts[1].strip()
+                    kpi_md += f'<div class="kpi-card"><strong>{key_part}:</strong> {value_part}</div>\n'
 
-        # ----- Tangible Insights -----
-        insights = ""
+        insights, next_steps = "", ""
         if domain == "saidler_co":
             uplift = dossier.get("mock_results", {}).get("engagement_uplift", "30%")
-            buzz = dossier.get("mock_results", {}).get("media_buzz_score", "9.7/10")
-            insights = f"""
-### Key Insights
+            insights = f"""### Key Insights
 - **Efficiency Gain**: {uplift} reduction in manual report time via **RAG + MCP orchestration**
 - **Accuracy**: **93% hallucination drop** using Grok 4 + internal data fine-tuning
 - **Governance**: **Human-in-loop + MCP validation** ensures **FINMA-ready compliance**
-- **Client Impact**: HNW clients in Zug receive **personalized video summaries** (94% preference)
-- **Portfolio Edge**: AI-mature companies raise **3.2× faster** (McKinsey 2025)
-- **Risk Mitigated**: Bias dashboard flags **gender/regional skew** before final review
 """
-
-        # ----- Next Steps (Actionable) -----
-        next_steps = ""
-        if "rag" in goal.lower() or "pipeline" in goal.lower():
-            next_steps = """
-### Recommended Next Steps
-1. **Pilot RAG on 5 pitch decks** → measure memo time vs. baseline
-2. **Fine-tune Grok 4** on Q4 2024 portfolio data (MCP-structured)
-3. **Deploy bias dashboard** to analysts by end of month
-4. **Schedule leadership briefing** on multimodal ROI
-"""
-        elif "workshop" in goal.lower():
-            next_steps = """
-### Recommended Next Steps
-1. **Book 3-day workshop** in Zug office (Q1 2025)
-2. **Assign 10 analysts** to RAG hands-on track
-3. **Measure pre/post fluency** via internal quiz
-"""
-        elif "dashboard" in goal.lower():
-            next_steps = """
-### Recommended Next Steps
-1. **Connect APIs**: arXiv, Hugging Face, Davos livestream
-2. **Set alert thresholds**: >70% relevance score
-3. **Demo to Partners** in weekly strategy sync
-"""
-
-        # ----- Mermaid Workflow -----
-        short_goal = smart_truncate(goal.replace('"', "'"), 80) + ("..." if len(goal) > 80 else "")
+        step_map = {
+            "rag|pipeline": "### Recommended Next Steps\n1. **Pilot RAG** on 5 pitch decks\n2. **Fine-tune Grok 4** on Q4 data\n3. **Deploy bias dashboard**",
+            "workshop": "### Recommended Next Steps\n1. **Book 3-day workshop**\n2. **Assign 10 analysts** to RAG track\n3. **Measure pre/post fluency**",
+            "dashboard": "### Recommended Next Steps\n1. **Connect APIs** to arXiv, etc.\n2. **Set alert thresholds**\n3. **Demo to Partners**"
+        }
+        for pattern, steps in step_map.items():
+            if re.search(pattern, goal.lower()):
+                next_steps = steps
+                break
+        
+        short_goal = smart_truncate(goal.replace('"', "'"), 80)
         mermaid = f'''
-<div class="mermaid" style="font-size: 14px; background: #111; padding: 20px; border-radius: 12px; overflow-x: auto;">
+<div class="mermaid">
 graph TD
-    subgraph "Phase 1: Cognitive Strategy"
-        A["User Goal: {short_goal}"]:::userInput
-        A --> B["Chief Scout Agent"]:::agent
-        B -. " {reasoning} " .-> C["Tool: {planner_tool}"]:::task
+    subgraph "Phase 1: Strategy"
+        A["Goal: {short_goal}"]:::userInput --> B["Chief Scout"]:::agent
+        B -. "{reasoning}" .-> C["Tool: {planner_tool}"]:::task
     end
     subgraph "Phase 2: Execution"
-        C --> D["Planner (Trends Injected)"]:::agent
-        D --> E["Orchestrator"]:::agent
-        E --> R["Refiner (parallel)"]:::agent
-        R --> Ads["Google Ads (Unrestricted)"]:::task
-        R --> Posts["X Posts"]:::task
+        C --> D["Planner"]:::agent --> E["Orchestrator"]:::agent --> R["Refiner"]:::agent
+        R --> Ads["Google Ads"]:::task & Posts["X Posts"]:::task
     end
     subgraph "Phase 3: Output"
-        Ads --> F["Assets + KPIs"]:::output
-        Posts --> F
+        Ads & Posts --> F["Assets + KPIs"]:::output
     end
     {style}
-    click A "data-goal" "Full Goal: {goal.replace('"', '&quot;')}"
 </div>
 '''
-
-        # ----- Final Report (Rich & Tangible) -----
         report_md = f"""## MMCOS AI Co-Pilot Report
 **Objective:** {goal}
 **Domain:** {dossier.get('objective','General')}
 
-### Summary
-AI autonomously selected the best strategy and generated ready-to-use assets.{kpi_md and kpi_md or ''}
-
+{kpi_md}
 {insights}
-
 {next_steps}
 
 ### AI Workflow
 """
         report_html = markdown.markdown(report_md) + mermaid
+        
         return {"report": report_html, "google_ads": ads, "viral_posts": posts}
 
 # ----------------------------------------------------------------------
