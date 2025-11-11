@@ -192,16 +192,33 @@ class OrchestratorAgent:
         }
 
 class RefinerAgent:
-    def generate_google_ads_copy(self, dossier: dict, goal: str) -> str:
+    # --- THIS IS THE MODIFIED FUNCTION ---
+    def generate_google_ads_copy(self, dossier: dict, goal: str) -> dict:
         uplift = dossier.get("mock_results", {}).get("engagement_uplift", "30%")
         prompt = PROMPTS["UNIVERSAL_GOOGLE_ADS"].format(TOPIC=goal, UPLIFT=uplift)
         try:
             _, model = select_model("lite")
             resp = model.generate_content(prompt)
-            return resp.text
+            ads_text = resp.text.strip()
+            
+            # Split the response text by a clear separator like '---'
+            parts = re.split(r'\s*---\s*', ads_text)
+            
+            # Clean up and assign to ad1 and ad2
+            ad1_content = parts.replace("AD 1:", "").strip() if len(parts) > 0 else "Ad 1 could not be generated."
+            ad2_content = parts.replace("AD 2:", "").strip() if len(parts) > 1 else "Ad 2 could not be generated."
+
+            return {
+                "ad1": ad1_content,
+                "ad2": ad2_content
+            }
         except Exception as e:
             print(f"Ads error: {e}")
-            return "Fallback Ads Generated"
+            return {
+                "ad1": "Fallback Ad 1: Could not generate.",
+                "ad2": "Fallback Ad 2: An error occurred."
+            }
+    # --- END OF MODIFIED FUNCTION ---
 
     def generate_viral_x_post(self, goal: str) -> dict:
         prompt = PROMPTS["VIRAL_X_POST"].format(TOPIC=goal)
@@ -272,7 +289,7 @@ class RefinerAgent:
         if kpis:
             kpi_md = "### KPIs\n"
             for k in kpis:
-                kpi_md += f'<div class="kpi-card"><strong>{k.split(":")[0]}:</strong> {k.split(":")[1].strip()}</div>\n'
+                kpi_md += f'<div class="kpi-card"><strong>{k.split(":")}:</strong> {k.split(":").strip()}</div>\n'
 
         # ----- Tangible Insights -----
         insights = ""
@@ -468,4 +485,3 @@ def index():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
-    
