@@ -68,7 +68,7 @@ def get_client() -> None:
     configure(api_key=key)
 
 def select_model(kind: str) -> tuple[str, GenerativeModel]:
-    name = "gemini-flash-latest" if kind == "lite" else "gemini-2.5-pro"
+    name = "gemini-flash-lite-latest" if kind == "lite" else "gemini-2.5-pro"
     if name not in MODEL_CACHE:
         MODEL_CACHE[name] = GenerativeModel(name)
     return name, MODEL_CACHE[name]
@@ -446,3 +446,4 @@ def index():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
